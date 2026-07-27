@@ -1,0 +1,7 @@
+2026-07-18T02:14:01Z ERROR checkout-service: connection to db timed out after 5000ms
+2026-07-18T02:14:03Z ERROR checkout-service: connection to db timed out after 5000ms
+2026-07-18T02:14:09Z WARN  checkout-service: retrying request (attempt 3/3)
+2026-07-18T02:14:12Z ERROR checkout-service: 503 Service Unavailable from payment-gateway
+2026-07-18T02:15:47Z ERROR api-gateway: throttling exceeded for client 10.0.4.22, request denied
+2026-07-18T02:16:02Z FATAL checkout-service: unhandled exception, process exiting
+2026-07-18T02:16:03Z INFO  orchestrator: restarting checkout-service (restart count: 14)

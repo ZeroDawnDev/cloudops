@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: checkout-service
+  template:
+    metadata:
+      labels:
+        app: checkout-service
+    spec:
+      containers:
+        - name: checkout
+          image: myregistry/checkout:latest
+          ports:
+            - containerPort: 8080
+          # No resource requests/limits set (cost + reliability risk)
+          # No livenessProbe / readinessProbe set (reliability risk)
+          env:
+            - name: DB_PASSWORD
+              value: "hardcoded-plaintext-password"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: checkout-service
+  ports:
+    - port: 80
+      targetPort: 8080

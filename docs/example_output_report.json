@@ -1,0 +1,51 @@
+{
+  "overall_score": 24,
+  "security_score": 8,
+  "network_score": 35,
+  "cost_score": 20,
+  "reliability_score": 40,
+  "critical_findings": [
+    {
+      "agent": "security",
+      "severity": "critical",
+      "title": "RDS instance is publicly accessible with a hardcoded password",
+      "explanation": "aws_db_instance.main sets publicly_accessible = true and hardcodes the master password in plaintext ('SuperSecret123!'). This exposes the database directly to the internet with a credential visible in source control.",
+      "resource": "aws_db_instance.main",
+      "recommended_fix": "Set publicly_accessible = false, move the password into AWS Secrets Manager or use manage_master_user_password = true, and place the instance in a private subnet.",
+      "fixed_snippet": "resource \"aws_db_instance\" \"main\" {\n  identifier                  = \"cloudops-demo-db\"\n  engine                      = \"postgres\"\n  instance_class              = \"db.r5.2xlarge\"\n  allocated_storage           = 100\n  username                    = \"admin\"\n  manage_master_user_password = true\n  publicly_accessible         = false\n  storage_encrypted           = true\n  skip_final_snapshot         = false\n}"
+    },
+    {
+      "agent": "security",
+      "severity": "critical",
+      "title": "Security group allows all inbound traffic from the internet",
+      "explanation": "aws_security_group.web permits ingress on all ports (0-65535) from 0.0.0.0/0, effectively exposing every service on the instance to the public internet.",
+      "resource": "aws_security_group.web",
+      "recommended_fix": "Restrict ingress to only the specific ports the application needs (e.g. 443) and scope cidr_blocks to known ranges or a load balancer security group.",
+      "fixed_snippet": "ingress {\n  from_port   = 443\n  to_port     = 443\n  protocol    = \"tcp\"\n  cidr_blocks = [\"0.0.0.0/0\"]\n}"
+    },
+    {
+      "agent": "security",
+      "severity": "critical",
+      "title": "IAM policy grants unrestricted admin access",
+      "explanation": "aws_iam_policy.admin_all uses Action = \"*\" and Resource = \"*\", granting full administrative access to anything the policy is attached to.",
+      "resource": "aws_iam_policy.admin_all",
+      "recommended_fix": "Scope the policy to only the specific actions and resources required, following least privilege.",
+      "fixed_snippet": null
+    }
+  ],
+  "all_findings": [
+    "... critical findings above, plus high/medium/low findings from all four agents (S3 public access block disabled, RDS storage not encrypted, m5.4xlarge with no auto-scaling, single-AZ deployment with no failover, no CloudWatch alarms configured, oversized db.r5.2xlarge for demo workload, etc.) — truncated here for brevity, full array returned by the live API"
+  ],
+  "recommended_improvements": [
+    "[CRITICAL] RDS instance is publicly accessible with a hardcoded password → Set publicly_accessible = false and use Secrets Manager",
+    "[CRITICAL] Security group allows all inbound traffic from the internet → Restrict ingress to required ports only",
+    "[CRITICAL] IAM policy grants unrestricted admin access → Scope policy to least privilege",
+    "[HIGH] S3 bucket public access block fully disabled → Re-enable all four block_public_* settings",
+    "[HIGH] No auto-scaling group; single m5.4xlarge instance → Move to an Auto Scaling Group with min/max sizing",
+    "[MEDIUM] RDS storage not encrypted at rest → Set storage_encrypted = true",
+    "[MEDIUM] Single-AZ deployment with no failover → Enable Multi-AZ for aws_db_instance.main",
+    "[LOW] db.r5.2xlarge likely oversized for stated workload → Right-size to db.t3.large or add autoscaling storage"
+  ],
+  "suggested_fix": "# Corrected excerpt addressing all CRITICAL/HIGH findings\nresource \"aws_security_group\" \"web\" {\n  name        = \"web-sg\"\n  description = \"Allow HTTPS only\"\n\n  ingress {\n    from_port   = 443\n    to_port     = 443\n    protocol    = \"tcp\"\n    cidr_blocks = [\"0.0.0.0/0\"]\n  }\n\n  egress {\n    from_port   = 0\n    to_port     = 0\n    protocol    = \"-1\"\n    cidr_blocks = [\"0.0.0.0/0\"]\n  }\n}\n\nresource \"aws_s3_bucket_public_access_block\" \"data\" {\n  bucket                  = aws_s3_bucket.data.id\n  block_public_acls       = true\n  block_public_policy     = true\n  ignore_public_acls      = true\n  restrict_public_buckets = true\n}\n\nresource \"aws_db_instance\" \"main\" {\n  identifier                  = \"cloudops-demo-db\"\n  engine                      = \"postgres\"\n  instance_class              = \"db.r5.2xlarge\"\n  allocated_storage           = 100\n  username                    = \"admin\"\n  manage_master_user_password = true\n  publicly_accessible         = false\n  storage_encrypted           = true\n  multi_az                    = true\n  skip_final_snapshot         = false\n}",
+  "executive_summary": "This Terraform configuration has an overall health score of 24/100 driven primarily by three critical security issues: a publicly accessible database with a hardcoded plaintext password, a security group open to all inbound traffic, and an IAM policy granting unrestricted admin access. Networking and reliability are moderately weak due to a single-AZ, single-instance deployment with no auto-scaling or failover. Cost efficiency is low because of oversized, statically provisioned compute (m5.4xlarge, db.r5.2xlarge) with no right-sizing. We recommend addressing the three critical findings immediately before this configuration touches any real environment."
+}
